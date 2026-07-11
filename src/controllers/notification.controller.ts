@@ -2,6 +2,7 @@ import { Response } from "express";
 
 import { supabase } from "../config/db";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { broadcastDispatchUpdate } from "../realtime/broadcast";
 
 function formatRelativeTime(isoDate: string): string {
   const diffMs = Date.now() - new Date(isoDate).getTime();
@@ -153,4 +154,6 @@ export async function createDriverAssignmentNotification(
       read: false,
     },
   ]);
+
+  await broadcastDispatchUpdate("notifications", driverId);
 }

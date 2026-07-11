@@ -2,6 +2,7 @@ import { Response } from "express";
 
 import { supabase } from "../config/db";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { broadcastDispatchUpdate } from "../realtime/broadcast";
 import { createDriverAssignmentNotification } from "./notification.controller";
 import { generateDisplayId } from "../utils/displayId";
 import {
@@ -252,6 +253,8 @@ export async function createBooking(req: AuthRequest, res: Response) {
       .eq("id", data.id)
       .single();
 
+    await broadcastDispatchUpdate("bookings");
+
     return res.status(201).json({
       success: true,
       message: "Booking Created",
@@ -335,6 +338,9 @@ export async function assignDriver(req: AuthRequest, res: Response) {
       "New Pickup Assigned",
       `${existing.vehicle} • ${existing.customer}`,
     );
+
+    await broadcastDispatchUpdate("bookings");
+    await broadcastDispatchUpdate("notifications", driver_id);
 
     const { data: refreshed } = await supabase
       .from("bookings")
@@ -433,6 +439,8 @@ export async function updateBookingStatus(req: AuthRequest, res: Response) {
       .select("*, booking_history(*)")
       .eq("id", existing.id)
       .single();
+
+    await broadcastDispatchUpdate("bookings");
 
     return res.json({
       success: true,
@@ -535,6 +543,8 @@ export async function advanceDriverStatus(req: AuthRequest, res: Response) {
       .select("*, booking_history(*)")
       .eq("id", existing.id)
       .single();
+
+    await broadcastDispatchUpdate("bookings");
 
     return res.json({
       success: true,
