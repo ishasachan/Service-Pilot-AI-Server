@@ -5,6 +5,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { broadcastDispatchUpdate } from "../realtime/broadcast";
 import { createDriverAssignmentNotification } from "./notification.controller";
 import { generateDisplayId } from "../utils/displayId";
+import { findBookingByRouteId } from "../utils/findBooking";
 import {
   bookingStatusToDriverStatus,
   driverStatusToBookingStatus,
@@ -161,10 +162,19 @@ export async function getBookingById(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
 
+    const match = await findBookingByRouteId<{ id: string }>(id, "id");
+
+    if (!match) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
     const { data, error } = await supabase
       .from("bookings")
       .select("*, booking_history(*)")
-      .or(`id.eq.${id},display_id.eq.${id}`)
+      .eq("id", match.id)
       .single();
 
     if (error || !data) {
@@ -287,11 +297,12 @@ export async function assignDriver(req: AuthRequest, res: Response) {
       });
     }
 
-    const { data: existing } = await supabase
-      .from("bookings")
-      .select("id, display_id, customer, vehicle")
-      .or(`id.eq.${id},display_id.eq.${id}`)
-      .single();
+    const existing = await findBookingByRouteId<{
+      id: string;
+      display_id: string;
+      customer: string;
+      vehicle: string;
+    }>(id, "id, display_id, customer, vehicle");
 
     if (!existing) {
       return res.status(404).json({
@@ -380,11 +391,7 @@ export async function updateBookingStatus(req: AuthRequest, res: Response) {
       });
     }
 
-    const { data: existing } = await supabase
-      .from("bookings")
-      .select("*")
-      .or(`id.eq.${id},display_id.eq.${id}`)
-      .single();
+    const existing = await findBookingByRouteId(id);
 
     if (!existing) {
       return res.status(404).json({
@@ -466,11 +473,7 @@ export async function advanceDriverStatus(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
 
-    const { data: existing } = await supabase
-      .from("bookings")
-      .select("*")
-      .or(`id.eq.${id},display_id.eq.${id}`)
-      .single();
+    const existing = await findBookingByRouteId(id);
 
     if (!existing) {
       return res.status(404).json({
@@ -570,11 +573,10 @@ export async function getBookingHistory(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
 
-    const { data: booking } = await supabase
-      .from("bookings")
-      .select("id, driver_id")
-      .or(`id.eq.${id},display_id.eq.${id}`)
-      .single();
+    const booking = await findBookingByRouteId<{
+      id: string;
+      driver_id: string | null;
+    }>(id, "id, driver_id");
 
     if (!booking) {
       return res.status(404).json({
