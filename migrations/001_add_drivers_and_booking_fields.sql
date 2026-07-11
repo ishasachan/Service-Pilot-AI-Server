@@ -1,0 +1,18 @@
+-- Booking extensions
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS display_id TEXT UNIQUE;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS driver_status TEXT;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS email TEXT;
+
+-- Drivers roster
+CREATE TABLE IF NOT EXISTS drivers (
+  id TEXT PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  location TEXT NOT NULL DEFAULT '',
+  rating NUMERIC(2,1) NOT NULL DEFAULT 4.5,
+  trips INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE SEQUENCE IF NOT EXISTS booking_display_seq START 1004;

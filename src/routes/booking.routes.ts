@@ -1,7 +1,8 @@
 import { Router } from "express";
 
 import {
-    assignDriver,
+  advanceDriverStatus,
+  assignDriver,
   createBooking,
   getBookingById,
   getBookingHistory,
@@ -43,6 +44,12 @@ router.put(
   "/:id/status",
   verifyToken,
   updateBookingStatus
+);
+
+router.put(
+  "/:id/advance-driver-status",
+  verifyToken,
+  advanceDriverStatus
 );
 
 router.get(
