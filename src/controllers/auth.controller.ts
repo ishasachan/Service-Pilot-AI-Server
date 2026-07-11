@@ -2,7 +2,9 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 
 import { supabase } from "../config/db";
+import { supabaseAuthPublic } from "../config/authClient";
 import { generateToken } from "../utils/generateToken";
+import { AuthRequest } from "../middleware/auth.middleware";
 
 export async function login(
   req: Request,
@@ -144,6 +146,118 @@ export async function register(
     });
   } catch (err) {
     console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+export async function forgotPassword(
+  req: Request,
+  res: Response,
+) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    const { data: user } = await supabase
+      .from("users")
+      .select("auth_user_id")
+      .eq("email", normalizedEmail)
+      .single();
+
+    if (user?.auth_user_id) {
+      const redirectTo = `${process.env.FRONTEND_URL}/reset-password`;
+
+      const { error } = await supabaseAuthPublic.auth.resetPasswordForEmail(
+        normalizedEmail,
+        { redirectTo },
+      );
+
+      if (error) {
+        console.error("Supabase reset email error:", error.message);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message:
+        "If an account exists, a password reset link has been sent.",
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+export async function syncPassword(
+  req: AuthRequest,
+  res: Response,
+) {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({
+        success: false,
+        message: "Recovery session is required",
+      });
+    }
+
+    const accessToken = authHeader.replace("Bearer ", "");
+    const { password } = req.body;
+
+    if (!password || String(password).length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters",
+      });
+    }
+
+    const { data: authData, error: authError } =
+      await supabase.auth.getUser(accessToken);
+
+    if (authError || !authData.user?.email) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired recovery session",
+      });
+    }
+
+    const hash = await bcrypt.hash(String(password), 10);
+
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ password_hash: hash })
+      .eq("email", authData.user.email);
+
+    if (updateError) {
+      return res.status(500).json({
+        success: false,
+        message: updateError.message,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    console.error(error);
 
     return res.status(500).json({
       success: false,
