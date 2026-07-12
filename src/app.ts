@@ -7,6 +7,7 @@ import userRoutes from "./routes/user.routes";
 import bookingRoutes from "./routes/booking.routes";
 import driverRoutes from "./routes/driver.routes";
 import notificationRoutes from "./routes/notification.routes";
+import bookingChatRoutes from "./routes/bookingChat.routes";
 
 dotenv.config();
 
@@ -32,5 +33,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/drivers", driverRoutes);
 
 app.use("/api/notifications", notificationRoutes);
+
+app.use("/api/booking-chat", bookingChatRoutes);
 
 export default app;

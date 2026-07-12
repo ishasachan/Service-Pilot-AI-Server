@@ -623,3 +623,53 @@ export async function getBookingHistory(req: AuthRequest, res: Response) {
     });
   }
 }
+
+export async function deleteBooking(req: AuthRequest, res: Response) {
+  try {
+    if (req.user?.role !== "advisor") {
+      return res.status(403).json({
+        success: false,
+        message: "Only advisors can delete bookings",
+      });
+    }
+
+    const id = String(req.params.id);
+    const match = await findBookingByRouteId<{ id: string; display_id?: string }>(
+      id,
+      "id, display_id",
+    );
+
+    if (!match) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const { error } = await supabase
+      .from("bookings")
+      .delete()
+      .eq("id", match.id);
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    await broadcastDispatchUpdate("bookings");
+
+    return res.json({
+      success: true,
+      message: `Booking ${match.display_id ?? id} deleted successfully`,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+}

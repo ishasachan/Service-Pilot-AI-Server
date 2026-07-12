@@ -4,6 +4,7 @@ import {
   advanceDriverStatus,
   assignDriver,
   createBooking,
+  deleteBooking,
   getBookingById,
   getBookingHistory,
   getBookings,
@@ -11,6 +12,7 @@ import {
 } from "../controllers/booking.controller";
 
 import {
+  authorize,
   verifyToken,
 } from "../middleware/auth.middleware";
 
@@ -56,6 +58,13 @@ router.get(
   "/:id/history",
   verifyToken,
   getBookingHistory
+);
+
+router.delete(
+  "/:id",
+  verifyToken,
+  authorize("advisor"),
+  deleteBooking
 );
 
 export default router;
