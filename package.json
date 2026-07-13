@@ -6,8 +6,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "mcp": "tsx mcp/httpServer.ts",
-    "mcp:test:tools": "tsx mcp/test/tools-smoke.ts"
+    "mcp:test:tools": "tsx src/mcp/test/tools-smoke.ts"
   },
   "keywords": [],
   "author": "",

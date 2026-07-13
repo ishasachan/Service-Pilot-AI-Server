@@ -160,9 +160,11 @@ export async function getBookings(req: AuthRequest, res: Response) {
 
 export async function getBookingById(req: AuthRequest, res: Response) {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
 
-    const match = await findBookingByRouteId<{ id: string }>(id, "id");
+    const match = (await findBookingByRouteId(id, "id")) as {
+      id: string;
+    } | null;
 
     if (!match) {
       return res.status(404).json({
@@ -287,7 +289,7 @@ export async function createBooking(req: AuthRequest, res: Response) {
 
 export async function assignDriver(req: AuthRequest, res: Response) {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { driver_id, driver_name } = req.body;
 
     if (!driver_id || !driver_name) {
@@ -297,12 +299,15 @@ export async function assignDriver(req: AuthRequest, res: Response) {
       });
     }
 
-    const existing = await findBookingByRouteId<{
+    const existing = (await findBookingByRouteId(
+      id,
+      "id, display_id, customer, vehicle",
+    )) as {
       id: string;
       display_id: string;
       customer: string;
       vehicle: string;
-    }>(id, "id, display_id, customer, vehicle");
+    } | null;
 
     if (!existing) {
       return res.status(404).json({
@@ -381,7 +386,7 @@ export async function assignDriver(req: AuthRequest, res: Response) {
 
 export async function updateBookingStatus(req: AuthRequest, res: Response) {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const { status, note } = req.body;
 
     if (!status) {
@@ -471,7 +476,7 @@ export async function updateBookingStatus(req: AuthRequest, res: Response) {
 
 export async function advanceDriverStatus(req: AuthRequest, res: Response) {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
 
     const existing = await findBookingByRouteId(id);
 
@@ -571,12 +576,12 @@ export async function advanceDriverStatus(req: AuthRequest, res: Response) {
 
 export async function getBookingHistory(req: AuthRequest, res: Response) {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
 
-    const booking = await findBookingByRouteId<{
+    const booking = (await findBookingByRouteId(id, "id, driver_id")) as {
       id: string;
       driver_id: string | null;
-    }>(id, "id, driver_id");
+    } | null;
 
     if (!booking) {
       return res.status(404).json({
@@ -634,10 +639,10 @@ export async function deleteBooking(req: AuthRequest, res: Response) {
     }
 
     const id = String(req.params.id);
-    const match = await findBookingByRouteId<{ id: string; display_id?: string }>(
-      id,
-      "id, display_id",
-    );
+    const match = (await findBookingByRouteId(id, "id, display_id")) as {
+      id: string;
+      display_id?: string;
+    } | null;
 
     if (!match) {
       return res.status(404).json({

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import bcrypt from "bcrypt";
 import type { Response } from "express";
 
-import { supabase } from "../../src/config/db";
+import { supabase } from "../../config/db";
 import type { OAuthServerProvider } from "@modelcontextprotocol/sdk/server/auth/provider.js";
 import type {
   OAuthClientInformationFull,

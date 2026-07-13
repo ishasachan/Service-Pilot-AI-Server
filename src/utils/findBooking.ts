@@ -29,6 +29,8 @@ export async function findBookingByRouteId<T extends string = "*">(
 }
 
 export async function findBookingDbId(routeId: string): Promise<string | null> {
-  const booking = await findBookingByRouteId<{ id: string }>(routeId, "id");
+  const booking = (await findBookingByRouteId(routeId, "id")) as {
+    id: string;
+  } | null;
   return booking?.id ?? null;
 }

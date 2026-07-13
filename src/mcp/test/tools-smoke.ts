@@ -1,6 +1,6 @@
 /**
  * Smoke-test all MCP service operations (no OAuth).
- * Run: npx tsx mcp/test/tools-smoke.ts
+ * Run: npx tsx src/mcp/test/tools-smoke.ts
  */
 import "../shared/loadEnv";
 
@@ -29,7 +29,7 @@ import {
   getNotifications,
   notifyDriver,
 } from "../services/notificationOperations";
-import { supabase } from "../../src/config/db";
+import { supabase } from "../../config/db";
 
 /** Loads the driver user row from Supabase for smoke tests. */
 async function getDriverUser() {

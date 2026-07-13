@@ -4,14 +4,14 @@
  */
 import "../shared/loadEnv";
 
-import { supabase } from "../../src/config/db";
-import { broadcastDispatchUpdate } from "../../src/realtime/broadcast";
-import { findBookingByRouteId } from "../../src/utils/findBooking";
+import { supabase } from "../../config/db";
+import { broadcastDispatchUpdate } from "../../realtime/broadcast";
+import { findBookingByRouteId } from "../../utils/findBooking";
 import {
   driverStatusToBookingStatus,
   getNextDriverStatus,
   type DriverStatus,
-} from "../../src/utils/statusMapping";
+} from "../../utils/statusMapping";
 
 import { mapBookingSummary, type BookingSummary } from "./bookingOperations";
 

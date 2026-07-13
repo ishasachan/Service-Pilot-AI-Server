@@ -3,9 +3,9 @@
  */
 import "../shared/loadEnv";
 
-import { supabase } from "../../src/config/db";
-import { createDriverAssignmentNotification } from "../../src/controllers/notification.controller";
-import { broadcastDispatchUpdate } from "../../src/realtime/broadcast";
+import { supabase } from "../../config/db";
+import { createDriverAssignmentNotification } from "../../controllers/notification.controller";
+import { broadcastDispatchUpdate } from "../../realtime/broadcast";
 
 /**
  * Sends an in-app notification to a driver (e.g. new assignment alert).

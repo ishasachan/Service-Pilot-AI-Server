@@ -3,7 +3,7 @@
  */
 import "../shared/loadEnv";
 
-import { supabase } from "../../src/config/db";
+import { supabase } from "../../config/db";
 
 /**
  * Returns dealership KPI counts: pending, assigned, in-progress, completed, etc.

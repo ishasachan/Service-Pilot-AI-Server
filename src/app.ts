@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
+import { mountServicePilotMcp } from "./mcp/mountMcp";
 import authRoutes from "./routes/auth.routes";
 import userRoutes from "./routes/user.routes";
 import bookingRoutes from "./routes/booking.routes";
@@ -39,4 +40,7 @@ app.use("/api/booking-chat", bookingChatRoutes);
 
 app.use("/api/driver-chat", driverChatRoutes);
 
+const mcpUrls = mountServicePilotMcp(app);
+
+export { mcpUrls };
 export default app;

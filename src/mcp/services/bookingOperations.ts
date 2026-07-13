@@ -4,15 +4,15 @@
  */
 import "../shared/loadEnv";
 
-import { supabase } from "../../src/config/db";
-import { createDriverAssignmentNotification } from "../../src/controllers/notification.controller";
-import { broadcastDispatchUpdate } from "../../src/realtime/broadcast";
-import { insertBookingFromDraft } from "../../src/services/bookingCreate.service";
+import { supabase } from "../../config/db";
+import { createDriverAssignmentNotification } from "../../controllers/notification.controller";
+import { broadcastDispatchUpdate } from "../../realtime/broadcast";
+import { insertBookingFromDraft } from "../../services/bookingCreate.service";
 import {
   lookupCustomersByName,
   lookupCustomersByPhone,
-} from "../../src/services/customerLookup.service";
-import { findBookingByRouteId } from "../../src/utils/findBooking";
+} from "../../services/customerLookup.service";
+import { findBookingByRouteId } from "../../utils/findBooking";
 
 export interface BookingSummary {
   id: string;

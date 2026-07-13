@@ -1,13 +1,9 @@
 /**
- * ServicePilot AI Copilot — Unified MCP (Streamable HTTP + OAuth)
- *
- * Run: npm run mcp:http
- * Inspector: Streamable HTTP → http://127.0.0.1:5002/mcp (OAuth required)
+ * Mounts ServicePilot MCP (Streamable HTTP + OAuth) on an existing Express app.
+ * Used by the main API server so API and MCP share one port (Render-friendly).
  */
 import { randomUUID } from "node:crypto";
 
-import cors from "cors";
-import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import {
   getOAuthProtectedResourceMetadataUrl,
   mcpAuthRouter,
@@ -16,9 +12,7 @@ import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middlew
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { Request, Response } from "express";
-
-import "./shared/loadEnv";
+import type { Express, Request, Response } from "express";
 
 import {
   getAuthContext,
@@ -26,50 +20,21 @@ import {
 } from "./auth/provider";
 import { createServicePilotMcpServer } from "./createServer";
 
-const MCP_PORT = Number(process.env.MCP_PORT ?? process.env.MCP_BOOKING_PORT ?? 5002);
-const MCP_BASE_URL = process.env.MCP_BASE_URL ?? `http://127.0.0.1:${MCP_PORT}`;
-const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
-
-if (!process.env.MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL) {
-  process.env.MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL = "true";
-}
-
-const issuerUrl = new URL(MCP_BASE_URL);
-const resourceServerUrl = new URL(`${MCP_BASE_URL}/mcp`);
 const oauthProvider = new ServicePilotOAuthProvider();
-
-const app = createMcpExpressApp({ host: "127.0.0.1" });
-
-app.use(
-  cors({
-    origin: FRONTEND_URL,
-    credentials: true,
-  }),
-);
-
-app.use(
-  mcpAuthRouter({
-    provider: oauthProvider,
-    issuerUrl,
-    baseUrl: issuerUrl,
-    scopesSupported: ["mcp:tools"],
-    resourceServerUrl,
-    resourceName: "ServicePilot AI Copilot",
-    serviceDocumentationUrl: new URL(FRONTEND_URL),
-  }),
-);
-
-const resourceMetadataUrl =
-  getOAuthProtectedResourceMetadataUrl(resourceServerUrl);
-
-const authMiddleware = requireBearerAuth({
-  verifier: oauthProvider,
-  resourceMetadataUrl,
-});
-
 const transports: Record<string, StreamableHTTPServerTransport> = {};
 
 type AuthedRequest = Request & { auth?: AuthInfo };
+
+function getPublicBaseUrl(): string {
+  if (process.env.MCP_BASE_URL) {
+    return process.env.MCP_BASE_URL.replace(/\/$/, "");
+  }
+  if (process.env.API_BASE_URL) {
+    return process.env.API_BASE_URL.replace(/\/$/, "");
+  }
+  const port = process.env.PORT ?? "5001";
+  return `http://127.0.0.1:${port}`;
+}
 
 /** Extracts the authenticated user from the bearer token on MCP requests. */
 function resolveUser(req: AuthedRequest) {
@@ -79,44 +44,6 @@ function resolveUser(req: AuthedRequest) {
   }
   return user;
 }
-
-/** Frontend calls this after login to finish OAuth and get the redirect URL with auth code. */
-app.post("/api/oauth/complete", async (req, res) => {
-  try {
-    const { oauth_pending, email, password, role } = req.body ?? {};
-
-    if (!oauth_pending || !email || !password || !role) {
-      return res.status(400).json({
-        success: false,
-        message: "oauth_pending, email, password, and role are required",
-      });
-    }
-
-    if (role !== "advisor" && role !== "driver") {
-      return res.status(400).json({
-        success: false,
-        message: "role must be advisor or driver",
-      });
-    }
-
-    const result = await oauthProvider.completeLogin({
-      oauthPending: oauth_pending,
-      email,
-      password,
-      role,
-    });
-
-    return res.json({
-      success: true,
-      redirectUrl: result.redirectUrl,
-      user: result.user,
-    });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "OAuth login failed";
-    return res.status(400).json({ success: false, message });
-  }
-});
 
 /** Handles MCP JSON-RPC POST requests (initialize + tool calls). */
 async function handleMcpPost(req: AuthedRequest, res: Response) {
@@ -203,32 +130,108 @@ async function handleMcpDelete(req: AuthedRequest, res: Response) {
   await transports[sessionId].handleRequest(req, res);
 }
 
-/** Health check endpoint for verifying MCP server is running. */
-app.get("/health", (_req, res) => {
-  res.json({
-    ok: true,
-    service: "servicepilot-copilot-mcp",
-    transport: "streamable-http",
-    oauth: true,
-    endpoint: "/mcp",
-    port: MCP_PORT,
-    issuer: issuerUrl.href,
-    resource: resourceServerUrl.href,
+/**
+ * Attaches MCP, OAuth, and related routes to the main Express application.
+ *
+ * @param app - Main ServicePilot Express app.
+ * @returns Public URLs for logging and env verification.
+ */
+export function mountServicePilotMcp(app: Express) {
+  const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5173";
+  const baseUrl = getPublicBaseUrl();
+
+  if (!process.env.MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL) {
+    process.env.MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL = "true";
+  }
+
+  const issuerUrl = new URL(`${baseUrl}/`);
+  const resourceServerUrl = new URL(`${baseUrl}/mcp`);
+
+  app.use(
+    mcpAuthRouter({
+      provider: oauthProvider,
+      issuerUrl,
+      baseUrl: issuerUrl,
+      scopesSupported: ["mcp:tools"],
+      resourceServerUrl,
+      resourceName: "ServicePilot AI Copilot",
+      serviceDocumentationUrl: new URL(frontendUrl),
+    }),
+  );
+
+  const resourceMetadataUrl =
+    getOAuthProtectedResourceMetadataUrl(resourceServerUrl);
+
+  const authMiddleware = requireBearerAuth({
+    verifier: oauthProvider,
+    resourceMetadataUrl,
   });
-});
 
-app.post("/mcp", authMiddleware, handleMcpPost);
-app.get("/mcp", authMiddleware, handleMcpGet);
-app.delete("/mcp", authMiddleware, handleMcpDelete);
+  /** Frontend calls this after login to finish OAuth and get the redirect URL with auth code. */
+  app.post("/api/oauth/complete", async (req, res) => {
+    try {
+      const { oauth_pending, email, password, role } = req.body ?? {};
 
-app.listen(MCP_PORT, "127.0.0.1", () => {
-  console.log(`ServicePilot MCP listening on ${MCP_BASE_URL}/mcp`);
-  console.log(`OAuth authorize: ${MCP_BASE_URL}/authorize`);
-  console.log(`OAuth login UI: ${FRONTEND_URL}/oauth/login`);
-  console.log(`Health: ${MCP_BASE_URL}/health`);
-});
+      if (!oauth_pending || !email || !password || !role) {
+        return res.status(400).json({
+          success: false,
+          message: "oauth_pending, email, password, and role are required",
+        });
+      }
 
-process.on("SIGINT", async () => {
+      if (role !== "advisor" && role !== "driver") {
+        return res.status(400).json({
+          success: false,
+          message: "role must be advisor or driver",
+        });
+      }
+
+      const result = await oauthProvider.completeLogin({
+        oauthPending: oauth_pending,
+        email,
+        password,
+        role,
+      });
+
+      return res.json({
+        success: true,
+        redirectUrl: result.redirectUrl,
+        user: result.user,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "OAuth login failed";
+      return res.status(400).json({ success: false, message });
+    }
+  });
+
+  app.get("/health", (_req, res) => {
+    res.json({
+      ok: true,
+      service: "servicepilot-api-mcp",
+      transport: "streamable-http",
+      oauth: true,
+      api: "/api",
+      mcp: "/mcp",
+      issuer: issuerUrl.href,
+      resource: resourceServerUrl.href,
+    });
+  });
+
+  app.post("/mcp", authMiddleware, handleMcpPost);
+  app.get("/mcp", authMiddleware, handleMcpGet);
+  app.delete("/mcp", authMiddleware, handleMcpDelete);
+
+  return {
+    baseUrl,
+    mcpUrl: resourceServerUrl.href,
+    authorizeUrl: `${baseUrl}/authorize`,
+    oauthLoginUrl: `${frontendUrl}/oauth/login`,
+  };
+}
+
+/** Closes all active MCP Streamable HTTP sessions (for graceful shutdown). */
+export async function shutdownMcpSessions() {
   for (const sessionId of Object.keys(transports)) {
     try {
       await transports[sessionId].close();
@@ -237,5 +240,4 @@ process.on("SIGINT", async () => {
       console.error(`Failed to close MCP session ${sessionId}:`, error);
     }
   }
-  process.exit(0);
-});
+}
