@@ -8,6 +8,9 @@
     "start": "node dist/server.js",
     "mcp:test:tools": "tsx src/mcp/test/tools-smoke.ts"
   },
+  "engines": {
+    "node": ">=20 <25"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -22,7 +25,8 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.22.0",
     "ws": "^8.21.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "typescript": "5.8.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -32,7 +36,6 @@
     "@types/node": "^26.1.1",
     "@types/ws": "^8.18.1",
     "ts-node-dev": "^2.0.0",
-    "tsx": "^4.23.1",
-    "typescript": "^5.8.3"
+    "tsx": "^4.23.1"
   }
 }
